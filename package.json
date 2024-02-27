@@ -1,0 +1,27 @@
+{
+  "name": "my-lawer",
+  "version": "1.0.0",
+  "description": "Lawyer Bot for Uzbekistan",
+  "main": "src/main.js",
+  "packageManagers": {
+    "yarn": "1.22.19"
+  },
+  "repository": "https://github.com/Adham-Mamedov/lawyer-bot",
+  "author": "Adham-Mamedov",
+  "license": "MIT",
+  "private": true,
+  "dependencies": {
+    "fastify": "^4.26.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.20",
+    "nodemon": "^3.1.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node src/main.js",
+    "dev": "nodemon --watch src src/main.ts"
+  }
+}
