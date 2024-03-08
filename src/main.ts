@@ -1,14 +1,25 @@
-import fastify from "fastify";
+import 'dotenv/config';
+import '@total-typescript/ts-reset';
+import fastify from 'fastify';
+import { registerRoutes } from '@src/routes';
+import { initTelegramBot } from '@src/utils/telegram.utils';
+import { validateEnv } from '@src/utils/app.utils';
 
-const server = fastify({ logger: true });
-
-server.get("/", async (request: any, reply: any) => {
-  return "Hello World!";
+const server = fastify({
+  logger: true,
 });
 
-server.listen({ port: 3000 }, (err: any, address: any) => {
-  if (err) {
-    console.error(err);
-    process.exit(1);
-  }
-});
+registerRoutes(server);
+
+const runServer = () => {
+  validateEnv();
+  server.listen({ port: 3000 }, (err: Error | null) => {
+    if (err) {
+      console.error(err);
+      process.exit(1);
+    }
+  });
+};
+
+runServer();
+initTelegramBot();

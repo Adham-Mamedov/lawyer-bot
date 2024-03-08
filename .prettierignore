@@ -1,0 +1,8 @@
+# compiled output
+/dist
+/node_modules
+/jspm_packages
+/build
+/.next
+/.nuxt
+/.vuepress/dist
