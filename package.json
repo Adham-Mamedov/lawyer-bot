@@ -1,7 +1,7 @@
 {
-  "name": "my-lawer",
+  "name": "legal-assistant",
   "version": "1.0.0",
-  "description": "Lawyer Bot for Uzbekistan",
+  "description": "Legal Assistant Bot for Uzbekistan",
   "main": "src/main.js",
   "packageManagers": {
     "yarn": "1.22.19"
