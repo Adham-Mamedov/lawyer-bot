@@ -2,8 +2,8 @@ import { OpenAI } from 'openai';
 
 export type Run = OpenAI.Beta.Threads.Run;
 
-export type ThreadMessagesPage = OpenAI.Beta.Threads.ThreadMessagesPage;
-export type ThreadMessage = OpenAI.Beta.Threads.ThreadMessage;
+export type ThreadMessagesPage = OpenAI.Beta.Threads.MessagesPage;
+export type ThreadMessage = OpenAI.Beta.Threads.Message;
 
 export const inProgressStatuses = ['in_progress', 'queued'] as const;
 export const successStatuses = ['completed'] as const;

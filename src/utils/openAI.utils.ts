@@ -2,40 +2,64 @@ import { failedStatuses, Run, successStatuses } from '@src/types/openAI.types';
 import { poll } from '@src/utils/async.utils';
 import { openai } from '@src/config/openAI.config';
 import { openAIMessagesPageToTelegramMessages } from '@src/helpers/message.helpers';
+import { appConfig } from '@src/config/app.config';
+
+export const createRun = async (threadId: string) => {
+  const run = await openai.beta.threads.runs.create(threadId, {
+    assistant_id: appConfig.openAIAssistantId,
+  });
+
+  return run;
+};
+
+export const cancelRun = async (run: Run) => {
+  try {
+    await openai.beta.threads.runs.cancel(run.thread_id, run.id);
+  } catch (error) {
+    console.log(error);
+  }
+};
 
 type TProcessRunOptions = {
   run: Run;
   onSuccess: (run: Run) => void;
   onFailure: (run: Run) => void;
+  onTimeout: (run: Run) => void;
 };
 export const processRun = async ({
   run,
   onSuccess,
+  onTimeout,
   onFailure,
 }: TProcessRunOptions) => {
-  const resolvedRun = await poll({
-    pollingInterval: 1000,
-    maxAttempts: 30,
-    pollingFunction: async () => {
-      return openai.beta.threads.runs.retrieve(run.thread_id, run.id);
-    },
-    isSuccessCondition: (run) => {
-      return (
-        successStatuses.includes(run.status) ||
-        failedStatuses.includes(run.status)
-      );
-    },
-  });
+  try {
+    const resolvedRun = await poll({
+      pollingInterval: 2000,
+      maxAttempts: 25,
+      pollingFunction: async () => {
+        return openai.beta.threads.runs.retrieve(run.thread_id, run.id);
+      },
+      isSuccessCondition: (run) => {
+        console.log('Run status:', run.status);
+        return (
+          successStatuses.includes(run.status) ||
+          failedStatuses.includes(run.status)
+        );
+      },
+    });
 
-  if (!resolvedRun) {
-    return onFailure(run);
+    if (!resolvedRun) {
+      return onTimeout(run);
+    }
+
+    if (successStatuses.includes(resolvedRun.status)) {
+      return onSuccess(resolvedRun);
+    }
+
+    onFailure(resolvedRun);
+  } catch (error) {
+    console.error('Error during run processing:', error);
   }
-
-  if (successStatuses.includes(resolvedRun.status)) {
-    return onSuccess(resolvedRun);
-  }
-
-  onFailure(resolvedRun);
 };
 
 // === ====================================================================================== ===

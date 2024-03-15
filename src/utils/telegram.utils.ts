@@ -1,7 +1,15 @@
 import TelegramBot from 'node-telegram-bot-api';
 import { appConfig } from '@src/config/app.config';
 import { openai } from '@src/config/openAI.config';
-import { onRunSuccess, processRun } from '@src/utils/openAI.utils';
+import { TELEGRAM_MESSAGES } from '@src/config/defaults.config';
+import {
+  cancelRun,
+  createRun,
+  onRunSuccess,
+  processRun,
+} from '@src/utils/openAI.utils';
+import { Run } from '@src/types/openAI.types';
+import { wait } from '@src/utils/async.utils';
 
 export const bot = new TelegramBot(appConfig.telegramBotToken, {
   polling: true,
@@ -20,18 +28,13 @@ export const initTelegramBot = () => {
     let threadId = threadIdsByChatId.get(chatId);
 
     if (!userPrompt) {
-      return bot.sendMessage(chatId, 'Запрос может содержать только текст.');
+      return bot.sendMessage(chatId, TELEGRAM_MESSAGES.ONLY_TEXT_INPUT);
     }
-
-    // bot.sendMessage(chatId, `Запрос принят. В обработке..._test_`, {
-    //   parse_mode: 'Markdown',
-    // });
-    // if (!threadId) return;
 
     if (runIdsByChatId.has(chatId))
       return bot.sendMessage(
         chatId,
-        'Подождите, пока предыдущий запрос обработается',
+        TELEGRAM_MESSAGES.WAIT_FOR_PREVIOUS_REQUEST,
       );
 
     if (userPrompt === '/start' || !threadId) {
@@ -39,62 +42,82 @@ export const initTelegramBot = () => {
       threadIdsByChatId.set(chatId, thread.id);
       threadId = thread.id;
     }
-
-    const userMessage = await openai.beta.threads.messages.create(threadId, {
+    const message = await openai.beta.threads.messages.create(threadId, {
       content: userPrompt,
       role: 'user',
     });
 
-    const run = await openai.beta.threads.runs.create(threadId, {
-      assistant_id: appConfig.openAIAssistantId,
-    });
-
+    const run = await createRun(threadId);
     runIdsByChatId.set(chatId, run.id);
 
-    bot.sendMessage(chatId, `Запрос принят. В обработке...`);
+    bot.sendMessage(chatId, TELEGRAM_MESSAGES.TAKEN_INTO_PROCESSING);
 
-    processRun({
-      run,
-      onSuccess: (resolvedRun) =>
-        onRunSuccess({
-          run: resolvedRun,
-          messageId: userMessage.id,
-          callback: async (messages) => {
-            await sendMessages(chatId, messages);
-            runIdsByChatId.delete(chatId);
-          },
-        }),
-      onFailure: (run) => {
-        console.error('[On Failure]:', run);
-        openai.beta.threads.runs.cancel(run.thread_id, run.id);
-        bot.sendMessage(chatId, `Ошибка обработки запроса. Попробуйте еще раз`);
-      },
-    });
+    const process = (run: Run, repeatCount: number = 0) =>
+      processRun({
+        run,
+        onSuccess: (resolvedRun) =>
+          onRunSuccess({
+            run: resolvedRun,
+            messageId: message.id,
+            callback: async (messages) => {
+              await sendMessages(chatId, messages);
+              runIdsByChatId.delete(chatId);
+            },
+          }),
+        onFailure: async (run) => {
+          console.error('[On Failure]:', run);
+
+          if (
+            repeatCount < 3 &&
+            run.last_error?.code === 'rate_limit_exceeded'
+          ) {
+            bot.sendMessage(chatId, TELEGRAM_MESSAGES.RATE_LIMIT_EXCEEDED);
+            await wait(60_000); // TODO: calculate time to wait based on message (Please try again in 2.357s.)
+            const newRun = await createRun(run.thread_id);
+            runIdsByChatId.set(chatId, newRun.id);
+            process(newRun, repeatCount + 1);
+            return;
+          }
+
+          bot.sendMessage(chatId, TELEGRAM_MESSAGES.ERROR_PROCESSING_REQUEST);
+        },
+        onTimeout: async (run) => {
+          console.log('[On Timeout]:', run);
+          if (repeatCount > 0) {
+            return bot.sendMessage(
+              chatId,
+              TELEGRAM_MESSAGES.ERROR_PROCESSING_REQUEST,
+            );
+          }
+
+          bot.sendMessage(chatId, TELEGRAM_MESSAGES.PROCESSING_TIMEOUT);
+          await cancelRun(run);
+          const newRun = await createRun(run.thread_id);
+          runIdsByChatId.set(chatId, newRun.id);
+          process(newRun, repeatCount + 1);
+        },
+      });
+
+    process(run);
   });
 
   bot.onText(/^.$/, (msg) => {
-    bot.sendMessage(msg.chat.id, 'Запрос должен содержать не менее 1 символа');
+    bot.sendMessage(msg.chat.id, TELEGRAM_MESSAGES.INPUT_MIN_LENGTH);
   });
   bot.onText(/.{1001,}/, (msg) => {
-    bot.sendMessage(
-      msg.chat.id,
-      'Запрос должен содержать не более 1000 символов',
-    );
+    bot.sendMessage(msg.chat.id, TELEGRAM_MESSAGES.INPUT_MAX_LENGTH);
   });
 
   bot.on('message', (msg) => {
     !msg.text &&
-      bot.sendMessage(
-        msg.chat.id,
-        `На данный момент поддерживаются только текстовые сообщения`,
-      );
+      bot.sendMessage(msg.chat.id, TELEGRAM_MESSAGES.ONLY_TEXT_SUPPORT);
   });
 };
 
 // === ================================================================================== ===
 const sendMessages = async (chatId: number, messages: string[]) => {
   for (const message of messages) {
-    await bot.sendMessage(chatId, message, { parse_mode: 'Markdown' });
+    await bot.sendMessage(chatId, message, { parse_mode: 'HTML' });
   }
 };
 

@@ -1,5 +1,4 @@
-export const wait = async (time: number) =>
-  new Promise((r) => setTimeout(r, time));
+export const wait = async (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export interface PollingOptions<T> {
   pollingInterval: number | number[];
