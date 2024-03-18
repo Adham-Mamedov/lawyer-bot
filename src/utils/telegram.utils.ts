@@ -15,6 +15,8 @@ export const bot = new TelegramBot(appConfig.telegramBotToken, {
   polling: true,
 });
 
+// TODO: create database of users and their threads (optional)
+
 const EMOJI_REGEX =
   /(\u00a9|\u00ae|[\u2000-\u3300]|\ud83c[\ud000-\udfff]|\ud83d[\ud000-\udfff]|\ud83e[\ud000-\udfff])/g;
 
@@ -22,14 +24,19 @@ const threadIdsByChatId = new Map<number, string>();
 const runIdsByChatId = new Map<number, string>();
 
 export const initTelegramBot = () => {
-  bot.onText(/^.{2,1000}$/, async ({ text, chat }) => {
+  bot.onText(/^.{2,1000}$/m, async ({ text, chat }) => {
     const chatId = chat.id;
     const userPrompt = formatInputText(text!);
-    let threadId = threadIdsByChatId.get(chatId);
+
+    if (userPrompt === '/start') {
+      return bot.sendMessage(chatId, TELEGRAM_MESSAGES.START_MESSAGE);
+    }
 
     if (!userPrompt) {
       return bot.sendMessage(chatId, TELEGRAM_MESSAGES.ONLY_TEXT_INPUT);
     }
+
+    let threadId = threadIdsByChatId.get(chatId);
 
     if (runIdsByChatId.has(chatId))
       return bot.sendMessage(
@@ -37,7 +44,7 @@ export const initTelegramBot = () => {
         TELEGRAM_MESSAGES.WAIT_FOR_PREVIOUS_REQUEST,
       );
 
-    if (userPrompt === '/start' || !threadId) {
+    if (!threadId) {
       const thread = await openai.beta.threads.create();
       threadIdsByChatId.set(chatId, thread.id);
       threadId = thread.id;
