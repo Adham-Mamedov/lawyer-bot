@@ -3,6 +3,7 @@ import { poll } from '@src/utils/async.utils';
 import { openai } from '@src/config/openAI.config';
 import { openAIMessagesPageToTelegramMessages } from '@src/helpers/message.helpers';
 import { appConfig } from '@src/config/app.config';
+import { Response } from 'openai/_shims/node-types';
 
 export const createRun = async (threadId: string) => {
   const run = await openai.beta.threads.runs.create(threadId, {
@@ -23,7 +24,7 @@ export const cancelRun = async (run: Run) => {
 type TProcessRunOptions = {
   run: Run;
   onSuccess: (run: Run) => void;
-  onFailure: (run: Run) => void;
+  onFailure: (run: Run, response: Response) => void;
   onTimeout: (run: Run) => void;
 };
 export const processRun = async ({
@@ -33,13 +34,15 @@ export const processRun = async ({
   onFailure,
 }: TProcessRunOptions) => {
   try {
-    const resolvedRun = await poll({
+    const result = await poll({
       pollingInterval: 2000,
       maxAttempts: 25,
       pollingFunction: async () => {
-        return openai.beta.threads.runs.retrieve(run.thread_id, run.id);
+        return await openai.beta.threads.runs
+          .retrieve(run.thread_id, run.id)
+          .withResponse();
       },
-      isSuccessCondition: (run) => {
+      isSuccessCondition: ({ data: run }) => {
         console.log('Run status:', run.status);
         return (
           successStatuses.includes(run.status) ||
@@ -48,15 +51,17 @@ export const processRun = async ({
       },
     });
 
-    if (!resolvedRun) {
+    if (!result) {
       return onTimeout(run);
     }
+
+    const { data: resolvedRun, response } = result;
 
     if (successStatuses.includes(resolvedRun.status)) {
       return onSuccess(resolvedRun);
     }
 
-    onFailure(resolvedRun);
+    onFailure(resolvedRun, response);
   } catch (error) {
     console.error('Error during run processing:', error);
   }
