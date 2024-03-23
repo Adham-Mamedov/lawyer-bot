@@ -16,3 +16,8 @@ This project aims to provide a legal assistant chatbot powered by OpenAI's RWST 
 
 ## Contributors
 - [Adham Mamedov](https://github.com/Adham-Mamedov)
+
+
+### TODO:
+- [ ] Add more legal datasets
+- [ ] Use summaries of legal documents for better responses

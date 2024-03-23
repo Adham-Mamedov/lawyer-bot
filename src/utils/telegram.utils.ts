@@ -16,6 +16,7 @@ export const bot = new TelegramBot(appConfig.telegramBotToken, {
 });
 
 // TODO: create database of users and their threads (optional)
+// Save: threadId => chatId
 
 const EMOJI_REGEX =
   /(\u00a9|\u00ae|[\u2000-\u3300]|\ud83c[\ud000-\udfff]|\ud83d[\ud000-\udfff]|\ud83e[\ud000-\udfff])/g;
@@ -28,12 +29,12 @@ export const initTelegramBot = () => {
     const chatId = chat.id;
     const userPrompt = formatInputText(text!);
 
-    if (userPrompt === '/start') {
-      return bot.sendMessage(chatId, TELEGRAM_MESSAGES.START_MESSAGE);
-    }
-
     if (!userPrompt) {
       return bot.sendMessage(chatId, TELEGRAM_MESSAGES.ONLY_TEXT_INPUT);
+    }
+
+    if (userPrompt === '/start') {
+      return bot.sendMessage(chatId, TELEGRAM_MESSAGES.START_MESSAGE);
     }
 
     let threadId = threadIdsByChatId.get(chatId);
