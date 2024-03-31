@@ -1,0 +1,53 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  telegramId    Int      @id @map("_id")
+  firstName     String
+  lastName      String?
+  username      String?
+  phoneNumber   String?
+  languageCode  String
+  isPremium     Boolean
+  chatId        Int
+  createdAt     DateTime @default(now())
+  lastMessageAt DateTime @default(now())
+
+  threadId String?
+  Thread   Thread?
+  limitId  String? @db.ObjectId
+  Limit    Limit?
+
+  @@map("users")
+}
+
+model Thread {
+  id        String   @id @map("_id")
+  chatId    Int      @unique
+  userId    Int      @unique
+  User      User     @relation(fields: [userId], references: [telegramId])
+  expiresAt DateTime // AUTO-DELETE THREAD AFTER THIS DATE
+  createdAt DateTime @default(now())
+
+  @@index(expiresAt, map: "expiresAt_auto_delete")
+  @@map("threads")
+}
+
+model Limit {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  tpd       Int
+  userId    Int      @unique
+  User      User     @relation(fields: [userId], references: [telegramId])
+  expiresAt DateTime // AUTO-DELETE LIMIT AFTER THIS DATE
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  @@index(expiresAt, map: "expiresAt_auto_delete")
+  @@map("limits")
+}

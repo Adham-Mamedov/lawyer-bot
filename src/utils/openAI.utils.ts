@@ -1,16 +1,22 @@
+import { Response } from 'openai/_shims/node-types';
 import { failedStatuses, Run, successStatuses } from '@src/types/openAI.types';
 import { poll } from '@src/utils/async.utils';
 import { openai } from '@src/config/openAI.config';
-import { openAIMessagesPageToTelegramMessages } from '@src/helpers/message.helpers';
 import { appConfig } from '@src/config/app.config';
-import { Response } from 'openai/_shims/node-types';
+import { openAIMessagesPageToTelegramMessages } from '@src/helpers/message.helpers';
+
+export const createThread = async () => {
+  return openai.beta.threads.create();
+};
+
+export const deleteThread = async (threadId: string) => {
+  return openai.beta.threads.del(threadId);
+};
 
 export const createRun = async (threadId: string) => {
-  const run = await openai.beta.threads.runs.create(threadId, {
+  return openai.beta.threads.runs.create(threadId, {
     assistant_id: appConfig.openAIAssistantId,
   });
-
-  return run;
 };
 
 export const cancelRun = async (run: Run) => {

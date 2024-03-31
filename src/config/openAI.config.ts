@@ -1,8 +1,8 @@
 import OpenAI from 'openai';
-import { appConfig } from '@src/config/app.config';
+import {appConfig} from '@src/config/app.config';
 
-const FIVE_MINUTES = 5 * 60 * 1000;
+const TEN_MINUTES = 10 * 60 * 1000;
 export const openai = new OpenAI({
   apiKey: appConfig.openAiKey,
-  timeout: FIVE_MINUTES,
+  timeout: TEN_MINUTES,
 });
