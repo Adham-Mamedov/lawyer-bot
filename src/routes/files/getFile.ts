@@ -4,8 +4,10 @@ import {
   HTTPMethods,
   RouteOptions,
 } from 'fastify';
-import { openai } from '@src/config/openAI.config';
 import { APIError } from 'openai';
+import { OpenAIService } from '@src/services/openAI.service';
+
+const openAIService = OpenAIService.getInstance();
 
 export const getFileRoute: RouteOptions = {
   method: 'GET' as HTTPMethods,
@@ -30,7 +32,7 @@ export const getFileRoute: RouteOptions = {
   handler: async function (request: FastifyRequest, reply: FastifyReply) {
     try {
       const { id } = request.params as { id: string };
-      const file = await openai.files.retrieve(id);
+      const file = await openAIService.getFileById(id);
       reply.send(file);
     } catch (error) {
       if (error instanceof APIError) {

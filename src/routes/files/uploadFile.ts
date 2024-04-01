@@ -4,9 +4,11 @@ import {
   HTTPMethods,
   RouteOptions,
 } from 'fastify';
-import { openai } from '@src/config/openAI.config';
 import fs from 'fs';
 import { getDatasetPath } from '@src/utils/dataset.utils';
+import { OpenAIService } from '@src/services/openAI.service';
+
+const openAIService = OpenAIService.getInstance();
 
 export const uploadFileRoute: RouteOptions = {
   method: 'POST' as HTTPMethods,
@@ -28,7 +30,7 @@ export const uploadFileRoute: RouteOptions = {
   handler: async function (request: FastifyRequest, reply: FastifyReply) {
     try {
       const { fileName } = request.params as { fileName: string };
-      const res = await openai.files.create({
+      const res = await openAIService.createFile({
         file: fs.createReadStream(getDatasetPath(fileName)),
         purpose: 'assistants',
       });

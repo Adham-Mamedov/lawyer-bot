@@ -4,7 +4,9 @@ import {
   HTTPMethods,
   RouteOptions,
 } from 'fastify';
-import { openai } from '@src/config/openAI.config';
+import { OpenAIService } from '@src/services/openAI.service';
+
+const openAIService = OpenAIService.getInstance();
 
 export const getAllAssistantsRoute: RouteOptions = {
   method: 'GET' as HTTPMethods,
@@ -18,8 +20,8 @@ export const getAllAssistantsRoute: RouteOptions = {
   },
   handler: async function (_request: FastifyRequest, reply: FastifyReply) {
     try {
-      const res = await openai.beta.assistants.list();
-      const assistants = res.data || [];
+      const res = await openAIService.getAllAssistants();
+      const assistants = res?.data || [];
       reply.send(assistants);
     } catch (error) {
       console.error(error);

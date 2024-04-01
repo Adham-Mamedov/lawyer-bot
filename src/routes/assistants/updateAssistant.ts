@@ -4,8 +4,10 @@ import {
   HTTPMethods,
   RouteOptions,
 } from 'fastify';
-import { openai } from '@src/config/openAI.config';
-import { IAssistantWithRetrievalUpdateDTO } from '@src/types/assistant.types';
+import { OpenAIService } from '@src/services/openAI.service';
+import { AssistantUpdateParams } from '@src/types/openAI.types';
+
+const openAIService = OpenAIService.getInstance();
 
 export const updateAssistantRoute: RouteOptions = {
   method: 'PUT' as HTTPMethods,
@@ -40,8 +42,8 @@ export const updateAssistantRoute: RouteOptions = {
   handler: async function (request: FastifyRequest, reply: FastifyReply) {
     try {
       const { id } = request.params as { id: string };
-      const assistantDTO = request.body as IAssistantWithRetrievalUpdateDTO;
-      const assistant = await openai.beta.assistants.update(id, assistantDTO);
+      const assistantDTO = request.body as AssistantUpdateParams;
+      const assistant = await openAIService.updateAssistant(id, assistantDTO);
       reply.send(assistant);
     } catch (error) {
       console.error(error);

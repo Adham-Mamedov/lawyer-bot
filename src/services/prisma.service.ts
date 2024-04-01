@@ -1,226 +1,228 @@
 import { PrismaClient } from '@prisma/client';
+import { IPrismaService } from '@src/types/prisma.types';
 import { User } from '@src/types/telegram.types';
+import { getNextDayMidnightInUTC } from '@src/utils/time.utils';
 import {
   MIN_TOKENS_FOR_REQUEST,
+  THREAD_EXPIRATION_TIME,
   TOKENS_PER_DAY_LIMIT,
 } from '@src/config/defaults.config';
-import { getNextDayMidnightInUTC } from '@src/utils/time.utils';
 
-const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
+export class PrismaService implements IPrismaService {
+  private static instance: PrismaService;
+  private readonly prisma: PrismaClient;
 
-const prisma = new PrismaClient();
+  private constructor() {
+    this.prisma = new PrismaClient();
+  }
 
-const createExpirationIndex = (collection: string) => {
-  if (!collection) return;
-  prisma
-    .$runCommandRaw({
-      createIndexes: collection,
-      indexes: [
-        {
-          key: {
-            expiresAt: 1,
+  public static getInstance(): PrismaService {
+    if (!PrismaService.instance) {
+      PrismaService.instance = new PrismaService();
+    }
+    return PrismaService.instance;
+  }
+
+  public createCustomIndexes() {
+    // this.createExpirationIndex('threads');
+    // this.createExpirationIndex('limits');
+  }
+
+  createExpirationIndex: IPrismaService['createExpirationIndex'] = (
+    collection,
+  ) => {
+    if (!collection) return;
+    this.prisma
+      .$runCommandRaw({
+        createIndexes: collection,
+        indexes: [
+          {
+            key: {
+              expiresAt: 1,
+            },
+            name: 'expiresAt_auto_delete',
+            expireAfterSeconds: 0,
           },
-          name: 'expiresAt_auto_delete',
-          expireAfterSeconds: 0,
-        },
-      ],
-    })
-    .then((res) => {
-      console.dir(res, { depth: 3 });
-    });
-};
-
-// createExpirationIndex('threads');
-// createExpirationIndex('limits');
-
-// === ===================================== USERS =========================================== ===
-
-const mapUserToDBUser = (user: User) => {
-  return {
-    firstName: user.first_name,
-    lastName: user.last_name || null,
-    username: user.username || null,
-    languageCode: user.language_code || 'ru',
-    isPremium: !!user.is_premium,
+        ],
+      })
+      .then((res) => {
+        console.dir(res, { depth: 3 });
+      });
   };
-};
 
-export const createUser = async (
-  user: User,
-  { chatId }: { chatId: number },
-) => {
-  try {
-    return await prisma.user.create({
-      data: {
-        telegramId: user.id,
-        ...mapUserToDBUser(user),
-        phoneNumber: null,
-        chatId,
-        Limit: {
-          create: {
+  // === ========================================= USERS =============================================== ===
+  private mapUserToDBUser(user: User) {
+    return {
+      firstName: user.first_name,
+      lastName: user.last_name || null,
+      username: user.username || null,
+      languageCode: user.language_code || 'ru',
+      isPremium: !!user.is_premium,
+    };
+  }
+
+  getUserByTelegramId: IPrismaService['getUserByTelegramId'] = async (id) => {
+    try {
+      return await this.prisma.user.findUnique({
+        where: {
+          telegramId: id,
+        },
+      });
+    } catch (error) {
+      console.log('Error getting user by telegramId:', error);
+      return null;
+    }
+  };
+
+  upsertUserByTelegramId: IPrismaService['upsertUserByTelegramId'] = async ({
+    user,
+    chatId,
+  }) => {
+    try {
+      return await this.prisma.user.upsert({
+        where: {
+          telegramId: user.id,
+        },
+        update: {
+          ...this.mapUserToDBUser(user),
+          lastMessageAt: new Date(),
+          chatId,
+        },
+        create: {
+          telegramId: user.id,
+          ...this.mapUserToDBUser(user),
+          phoneNumber: null,
+          chatId,
+          Limit: {
+            create: {
+              tpd: TOKENS_PER_DAY_LIMIT,
+              expiresAt: getNextDayMidnightInUTC(),
+            },
+          },
+        },
+      });
+    } catch (error) {
+      console.log('Error creating user:', error);
+      return null;
+    }
+  };
+
+  // === ========================================= THREADS =============================================== ===
+  getThreadByChatId: IPrismaService['getThreadByChatId'] = async (chatId) => {
+    try {
+      return await this.prisma.thread.findFirst({
+        where: {
+          chatId,
+        },
+      });
+    } catch (error) {
+      console.log('Error getting thread by chatId:', error);
+      return null;
+    }
+  };
+
+  upsertThread: IPrismaService['upsertThread'] = async ({
+    id,
+    userTgId,
+    chatId,
+  }) => {
+    const expiresAt = new Date(Date.now() + THREAD_EXPIRATION_TIME);
+    try {
+      return await this.prisma.thread.upsert({
+        where: {
+          id,
+        },
+        update: {
+          expiresAt,
+        },
+        create: {
+          id,
+          chatId,
+          userId: userTgId,
+          expiresAt,
+        },
+      });
+    } catch (error) {
+      console.log('Error updating thread:', error);
+      return null;
+    }
+  };
+
+  deleteThread: IPrismaService['deleteThread'] = async (id) => {
+    try {
+      return await this.prisma.thread.delete({
+        where: {
+          id,
+        },
+      });
+    } catch (error) {
+      console.log('Error deleting thread:', error);
+      return null;
+    }
+  };
+
+  // === ========================================= LIMITS =============================================== ===
+
+  getUserLimit: IPrismaService['getUserLimit'] = async (userId) => {
+    try {
+      let limit = await this.prisma.limit.findUnique({
+        where: {
+          userId,
+        },
+      });
+
+      if (!limit) {
+        limit = await this.prisma.limit.create({
+          data: {
+            userId,
             tpd: TOKENS_PER_DAY_LIMIT,
             expiresAt: getNextDayMidnightInUTC(),
           },
-        },
-      },
-    });
-  } catch (error) {
-    console.log('Error creating user:', error);
-    return null;
-  }
-};
+        });
+      }
 
-export const updateUserByTelegramId = async (
-  user: User,
-  { chatId }: { chatId: number },
-) => {
-  try {
-    return await prisma.user.upsert({
-      where: {
-        telegramId: user.id,
-      },
-      update: {
-        ...mapUserToDBUser(user),
-        lastMessageAt: new Date(),
-        chatId,
-      },
-      create: {
-        telegramId: user.id,
-        ...mapUserToDBUser(user),
-        phoneNumber: null,
-        chatId,
-      },
-    });
-  } catch (error) {
-    console.log('Error creating user:', error);
-    return null;
-  }
-};
+      return limit?.tpd || -1;
+    } catch (error) {
+      console.log('Error getting user limit:', error);
+      return -1;
+    }
+  };
 
-export const getUserByTelegramId = async (id: number) => {
-  try {
-    return await prisma.user.findUnique({
-      where: {
-        telegramId: id,
-      },
-    });
-  } catch (error) {
-    console.log('Error getting user by telegramId:', error);
-    return null;
-  }
-};
+  checkUserLimitReached: IPrismaService['checkUserLimitReached'] = async (
+    userId: number,
+  ) => {
+    try {
+      const limit = await this.getUserLimit(userId);
+      return limit <= MIN_TOKENS_FOR_REQUEST;
+    } catch (error) {
+      console.log('Error checking user limit:', error);
+      return true;
+    }
+  };
 
-// === ===================================== THREADS =========================================== ===
-export type UpsertThreadDto = {
-  id: string;
-  chatId: number;
-  userTgId: number;
-};
-
-export const upsertThread = async ({
-  id,
-  userTgId,
-  chatId,
-}: UpsertThreadDto) => {
-  const expiresAt = new Date(Date.now() + SEVEN_DAYS);
-  try {
-    return await prisma.thread.upsert({
-      where: {
-        id,
-      },
-      update: {
-        expiresAt,
-      },
-      create: {
-        id,
-        chatId,
-        userId: userTgId,
-        expiresAt,
-      },
-    });
-  } catch (error) {
-    console.log('Error updating thread:', error);
-    return null;
-  }
-};
-
-export const deleteThread = async (id: string) => {
-  try {
-    return await prisma.thread.delete({
-      where: {
-        id,
-      },
-    });
-  } catch (error) {
-    console.log('Error deleting thread:', error);
-    return null;
-  }
-};
-
-export const getThreadByChatId = async (chatId: number) => {
-  try {
-    return await prisma.thread.findFirst({
-      where: {
-        chatId,
-      },
-    });
-  } catch (error) {
-    console.log('Error getting thread by chatId:', error);
-    return null;
-  }
-};
-
-// === ===================================== LIMITS =========================================== ===
-
-export const getUserLimit = async (userId: number) => {
-  try {
-    let limit = await prisma.limit.findUnique({
-      where: {
-        userId,
-      },
-    });
-
-    if (!limit) {
-      limit = await prisma.limit.create({
-        data: {
+  decreaseUserLimit: IPrismaService['decreaseUserLimit'] = async (
+    userId: number,
+    totalUsage: number,
+  ) => {
+    try {
+      return await this.prisma.limit.upsert({
+        where: {
           userId,
-          tpd: TOKENS_PER_DAY_LIMIT,
+        },
+        create: {
+          userId,
+          tpd: TOKENS_PER_DAY_LIMIT - totalUsage,
           expiresAt: getNextDayMidnightInUTC(),
         },
-      });
-    }
-
-    return limit?.tpd || -1;
-  } catch (error) {
-    console.log('Error getting user limit:', error);
-    return -1;
-  }
-};
-
-export const checkUserLimitReached = async (userId: number) => {
-  const limit = await getUserLimit(userId);
-  return limit <= MIN_TOKENS_FOR_REQUEST;
-};
-
-export const decreaseUserLimit = async (userId: number, totalUsage: number) => {
-  try {
-    await prisma.limit.upsert({
-      where: {
-        userId,
-      },
-      create: {
-        userId,
-        tpd: TOKENS_PER_DAY_LIMIT - totalUsage,
-        expiresAt: getNextDayMidnightInUTC(),
-      },
-      update: {
-        tpd: {
-          decrement: totalUsage,
+        update: {
+          tpd: {
+            decrement: totalUsage,
+          },
         },
-      },
-    });
-  } catch (error) {
-    console.log('Error decreasing user limit:', error);
-    return null;
-  }
-};
+      });
+    } catch (error) {
+      console.log('Error decreasing user limit:', error);
+      return null;
+    }
+  };
+}

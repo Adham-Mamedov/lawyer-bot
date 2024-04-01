@@ -2,8 +2,8 @@ import 'dotenv/config';
 import '@total-typescript/ts-reset';
 import fastify from 'fastify';
 import { registerRoutes } from '@src/routes';
-import { initTelegramBot } from '@src/utils/telegram.utils';
 import { validateEnv } from '@src/utils/app.utils';
+import { TelegramService } from '@src/services/telegram.service';
 
 const server = fastify({
   logger: true,
@@ -21,5 +21,7 @@ const runServer = () => {
   });
 };
 
+const telegramService = TelegramService.getInstance();
+
 runServer();
-initTelegramBot();
+telegramService.init();
