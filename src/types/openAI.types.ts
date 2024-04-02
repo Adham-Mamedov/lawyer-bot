@@ -51,7 +51,7 @@ export interface IOpenAIService {
   ): Promise<Assistant | null>;
 
   createThread(): Promise<Thread>;
-  deleteThread(threadId: string): Promise<ThreadDeleted>;
+  deleteThread(threadId: string): Promise<ThreadDeleted | null>;
 
   createMessage(options: {
     threadId: string;

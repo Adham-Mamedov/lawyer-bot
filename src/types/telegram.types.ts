@@ -1,4 +1,8 @@
-import TelegramBot from 'node-telegram-bot-api';
+import TelegramBot, {
+  ChatId,
+  Message,
+  SendMessageOptions,
+} from 'node-telegram-bot-api';
 import { Run, Thread } from '@src/types/openAI.types';
 
 export type User = TelegramBot.User & { is_premium?: boolean };
@@ -22,12 +26,19 @@ type TelegramCommands = {
 
 export type ITelegramService = {
   init(): void;
+
+  sendMessageSafe(
+    chatId: ChatId,
+    text: string,
+    options?: SendMessageOptions | undefined,
+  ): Promise<Message | void>;
+
   handleNewUser(props: { user: User; chatId: number }): Promise<void>;
   processUserPrompt(props: {
     chatId: number;
     userPrompt: string;
     user: User;
-  }): Promise<void>;
+  }): Promise<unknown>;
 
   onRunSuccess(props: {
     resolvedRun: Run;

@@ -93,7 +93,12 @@ export class OpenAIService implements IOpenAIService {
   };
 
   deleteThread: IOpenAIService['deleteThread'] = async (threadId: string) => {
-    return this.openAI.beta.threads.del(threadId);
+    try {
+      return await this.openAI.beta.threads.del(threadId);
+    } catch (error) {
+      console.error(error);
+      return null;
+    }
   };
 
   createMessage: IOpenAIService['createMessage'] = async ({

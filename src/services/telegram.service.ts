@@ -10,7 +10,6 @@ import { wait } from '@src/utils/async.utils';
 import { appConfig } from '@src/config/app.config';
 import { TELEGRAM_MESSAGES } from '@src/config/defaults.config';
 
-// TODO: add global error handlers
 // TODO: add commands and registration steps. Save user phone number, name, last name, etc.
 // TODO: restrict out-of-context messages (Create separate assistant to check if message is related to the context)
 
@@ -55,20 +54,20 @@ export class TelegramService implements ITelegramService {
       const userPrompt = formatInputText(text!);
 
       if (this.runIdsByChatId.has(chatId))
-        return this.bot.sendMessage(
+        return this.sendMessageSafe(
           chatId,
           TELEGRAM_MESSAGES.WAIT_FOR_PREVIOUS_REQUEST,
         );
 
       if (user.is_bot) {
-        return this.bot.sendMessage(
+        return this.sendMessageSafe(
           chatId,
           TELEGRAM_MESSAGES.BOTS_NOT_SUPPORTED,
         );
       }
 
       if (!userPrompt) {
-        return this.bot.sendMessage(chatId, TELEGRAM_MESSAGES.ONLY_TEXT_INPUT);
+        return this.sendMessageSafe(chatId, TELEGRAM_MESSAGES.ONLY_TEXT_INPUT);
       }
 
       const hasLimitReached = await this.dbService.checkUserLimitReached(
@@ -76,10 +75,18 @@ export class TelegramService implements ITelegramService {
       );
 
       if (hasLimitReached) {
-        return this.bot.sendMessage(chatId, TELEGRAM_MESSAGES.LIMIT_REACHED);
+        return this.sendMessageSafe(chatId, TELEGRAM_MESSAGES.LIMIT_REACHED);
       }
 
-      this.processUserPrompt({ chatId, user, userPrompt });
+      return this.processUserPrompt({ chatId, user, userPrompt }).catch(
+        (error) => {
+          console.error('Error while processing user prompt:', error);
+          this.sendMessageSafe(
+            chatId,
+            TELEGRAM_MESSAGES.ERROR_PROCESSING_REQUEST,
+          );
+        },
+      );
     });
   }
 
@@ -116,15 +123,15 @@ export class TelegramService implements ITelegramService {
 
   private initErrorHandlers() {
     this.bot.onText(/^.$/, (msg) => {
-      this.bot.sendMessage(msg.chat.id, TELEGRAM_MESSAGES.INPUT_MIN_LENGTH);
+      this.sendMessageSafe(msg.chat.id, TELEGRAM_MESSAGES.INPUT_MIN_LENGTH);
     });
     this.bot.onText(/.{1001,}/, (msg) => {
-      this.bot.sendMessage(msg.chat.id, TELEGRAM_MESSAGES.INPUT_MAX_LENGTH);
+      this.sendMessageSafe(msg.chat.id, TELEGRAM_MESSAGES.INPUT_MAX_LENGTH);
     });
 
     this.bot.on('message', (msg) => {
       !msg.text &&
-        this.bot.sendMessage(msg.chat.id, TELEGRAM_MESSAGES.ONLY_TEXT_SUPPORT);
+        this.sendMessageSafe(msg.chat.id, TELEGRAM_MESSAGES.ONLY_TEXT_SUPPORT);
     });
 
     this.bot.on('error', (error) => {
@@ -133,6 +140,16 @@ export class TelegramService implements ITelegramService {
   }
 
   // === ====================================== METHODS ==================================================== ===
+  sendMessageSafe: ITelegramService['sendMessageSafe'] = async (
+    chatId,
+    text,
+    options,
+  ) => {
+    return this.bot.sendMessage(chatId, text, options).catch((error) => {
+      console.error('Error while sending message:', error);
+    });
+  };
+
   handleNewUser: ITelegramService['handleNewUser'] = async ({
     user,
     chatId,
@@ -174,21 +191,22 @@ export class TelegramService implements ITelegramService {
     const run = await this.openAIService.createRun(threadId);
     this.runIdsByChatId.set(chatId, run.id);
 
-    this.bot.sendMessage(chatId, TELEGRAM_MESSAGES.TAKEN_INTO_PROCESSING);
+    this.sendMessageSafe(chatId, TELEGRAM_MESSAGES.TAKEN_INTO_PROCESSING);
 
     const process = (run: Run, retryCount: number = 0) =>
       this.openAIService.processRun({
         run,
-        onSuccess: (resolvedRun) =>
-          this.onRunSuccess({
+        onSuccess: (resolvedRun) => {
+          return this.onRunSuccess({
             resolvedRun,
             user,
             chatId,
             threadId: threadId!,
             messageId: message.id,
-          }),
+          });
+        },
         onFailure: async (run) => {
-          this.onRunFailure({
+          return this.onRunFailure({
             run,
             chatId,
             retryCount,
@@ -196,11 +214,16 @@ export class TelegramService implements ITelegramService {
           });
         },
         onTimeout: async (run) => {
-          this.onRunTimeout({ run, chatId, retryCount, retryCb: process });
+          return this.onRunTimeout({
+            run,
+            chatId,
+            retryCount,
+            retryCb: process,
+          });
         },
       });
 
-    process(run);
+    return process(run);
   };
 
   onRunSuccess: ITelegramService['onRunSuccess'] = async ({
@@ -236,14 +259,14 @@ export class TelegramService implements ITelegramService {
     console.error('[On Failure]:', run);
 
     if (retryCount < 3 && run.last_error?.code === 'rate_limit_exceeded') {
-      this.bot.sendMessage(chatId, TELEGRAM_MESSAGES.RATE_LIMIT_EXCEEDED);
+      this.sendMessageSafe(chatId, TELEGRAM_MESSAGES.RATE_LIMIT_EXCEEDED);
       await wait(60_000); // TODO: Get time from headers when openAI adds to assistants' API
       const newRun = await this.openAIService.createRun(run.thread_id);
       this.runIdsByChatId.set(chatId, newRun.id);
       retryCb(newRun, retryCount);
     }
 
-    this.bot.sendMessage(chatId, TELEGRAM_MESSAGES.ERROR_PROCESSING_REQUEST);
+    this.sendMessageSafe(chatId, TELEGRAM_MESSAGES.ERROR_PROCESSING_REQUEST);
   };
 
   onRunTimeout: ITelegramService['onRunTimeout'] = async ({
@@ -254,11 +277,11 @@ export class TelegramService implements ITelegramService {
   }) => {
     console.log('[On Timeout]:', run);
     if (retryCount > 0) {
-      this.bot.sendMessage(chatId, TELEGRAM_MESSAGES.ERROR_PROCESSING_REQUEST);
+      this.sendMessageSafe(chatId, TELEGRAM_MESSAGES.ERROR_PROCESSING_REQUEST);
       return;
     }
 
-    this.bot.sendMessage(chatId, TELEGRAM_MESSAGES.PROCESSING_TIMEOUT);
+    this.sendMessageSafe(chatId, TELEGRAM_MESSAGES.PROCESSING_TIMEOUT);
     await this.openAIService.cancelRun(run);
     const newRun = await this.openAIService.createRun(run.thread_id);
     this.runIdsByChatId.set(chatId, newRun.id);
@@ -279,9 +302,9 @@ export class TelegramService implements ITelegramService {
   sendMessages: ITelegramService['sendMessages'] = async (chatId, messages) => {
     console.log('Sending messages:', messages);
     for (const message of messages) {
-      await this.bot.sendMessage(chatId, message, { parse_mode: 'HTML' });
+      await this.sendMessageSafe(chatId, message, { parse_mode: 'HTML' });
     }
-    await this.bot.sendMessage(chatId, TELEGRAM_MESSAGES.BOT_MAKES_MISTAKES);
+    await this.sendMessageSafe(chatId, TELEGRAM_MESSAGES.BOT_MAKES_MISTAKES);
   };
 
   createThread: ITelegramService['createThread'] = async ({ user, chatId }) => {
@@ -303,12 +326,12 @@ export class TelegramService implements ITelegramService {
   }) => {
     try {
       this.handleNewUser({ user, chatId });
-      return this.bot.sendMessage(chatId, TELEGRAM_MESSAGES.START_MESSAGE, {
+      return this.sendMessageSafe(chatId, TELEGRAM_MESSAGES.START_MESSAGE, {
         parse_mode: 'HTML',
       });
     } catch (err) {
       console.error('Error while handling Start:', err);
-      return this.bot.sendMessage(
+      return this.sendMessageSafe(
         chatId,
         TELEGRAM_MESSAGES.ERROR_PROCESSING_REQUEST,
       );
@@ -324,12 +347,12 @@ export class TelegramService implements ITelegramService {
         this.dbService.deleteThread(thread.id);
         this.openAIService.deleteThread(thread.id);
       }
-      return this.bot.sendMessage(chatId, TELEGRAM_MESSAGES.NEW_THREAD, {
+      return this.sendMessageSafe(chatId, TELEGRAM_MESSAGES.NEW_THREAD, {
         parse_mode: 'HTML',
       });
     } catch (err) {
       console.error('Error while handling new Thread:', err);
-      return this.bot.sendMessage(
+      return this.sendMessageSafe(
         chatId,
         TELEGRAM_MESSAGES.ERROR_PROCESSING_REQUEST,
       );
@@ -342,7 +365,7 @@ export class TelegramService implements ITelegramService {
   }) => {
     try {
       const limit = await this.dbService.getUserLimit(userId);
-      return this.bot.sendMessage(
+      return this.sendMessageSafe(
         chatId,
         TELEGRAM_MESSAGES.CHECK_LIMIT.replace(
           '__limit__',
@@ -352,7 +375,7 @@ export class TelegramService implements ITelegramService {
       );
     } catch (err) {
       console.error('Error while handling Check Limit:', err);
-      return this.bot.sendMessage(
+      return this.sendMessageSafe(
         chatId,
         TELEGRAM_MESSAGES.ERROR_PROCESSING_REQUEST,
       );
@@ -361,12 +384,12 @@ export class TelegramService implements ITelegramService {
 
   onHelpCommand: ITelegramService['onHelpCommand'] = async ({ chatId }) => {
     try {
-      return this.bot.sendMessage(chatId, TELEGRAM_MESSAGES.HELP, {
+      return this.sendMessageSafe(chatId, TELEGRAM_MESSAGES.HELP, {
         parse_mode: 'HTML',
       });
     } catch (err) {
       console.error('Error while handling Help:', err);
-      return this.bot.sendMessage(
+      return this.sendMessageSafe(
         chatId,
         TELEGRAM_MESSAGES.ERROR_PROCESSING_REQUEST,
       );
