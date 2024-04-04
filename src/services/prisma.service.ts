@@ -74,10 +74,10 @@ export class PrismaService implements IPrismaService {
     }
   };
 
-  upsertUserByTelegramId: IPrismaService['upsertUserByTelegramId'] = async ({
+  upsertUserByTelegramId: IPrismaService['upsertUserByTelegramId'] = async (
     user,
-    chatId,
-  }) => {
+    updateDto,
+  ) => {
     try {
       return await this.prisma.user.upsert({
         where: {
@@ -86,13 +86,13 @@ export class PrismaService implements IPrismaService {
         update: {
           ...this.mapUserToDBUser(user),
           lastMessageAt: new Date(),
-          chatId,
+          ...updateDto,
         },
         create: {
           telegramId: user.id,
           ...this.mapUserToDBUser(user),
           phoneNumber: null,
-          chatId,
+          chatId: updateDto.chatId,
           Limit: {
             create: {
               tpd: TOKENS_PER_DAY_LIMIT,
@@ -106,6 +106,16 @@ export class PrismaService implements IPrismaService {
       return null;
     }
   };
+
+  checkUserInfoCompleteness: IPrismaService['checkUserInfoCompleteness'] =
+    async (userId) => {
+      const user = await this.getUserByTelegramId(userId);
+      return {
+        firstName: !!user?.enteredFirstName,
+        lastName: !!user?.enteredLastName,
+        phone: !!user?.phoneNumber,
+      };
+    };
 
   // === ========================================= THREADS =============================================== ===
   getThreadByChatId: IPrismaService['getThreadByChatId'] = async (chatId) => {

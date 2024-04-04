@@ -1,24 +1,29 @@
 import TelegramBot from 'node-telegram-bot-api';
 import { ETelegramCommands, ITelegramService } from '@src/types/telegram.types';
 import { IOpenAIService, Run } from '@src/types/openAI.types';
-import { IPrismaService } from '@src/types/prisma.types';
+import { ERegistrationSteps, IPrismaService } from '@src/types/prisma.types';
 
 import { PrismaService } from '@src/services/prisma.service';
 import { OpenAIService } from '@src/services/openAI.service';
-import { formatInputText } from '@src/utils/telegram.utils';
+import {
+  formatInputText,
+  formatPhoneNumber,
+  validatePhoneNumber,
+} from '@src/utils/telegram.utils';
 import { wait } from '@src/utils/async.utils';
 import { appConfig } from '@src/config/app.config';
 import { TELEGRAM_MESSAGES } from '@src/config/defaults.config';
 
-// TODO: add commands and registration steps. Save user phone number, name, last name, etc.
 // TODO: restrict out-of-context messages (Create separate assistant to check if message is related to the context)
 
 export class TelegramService implements ITelegramService {
   private static instance: TelegramService;
   private readonly bot: TelegramBot;
-  private readonly runIdsByChatId = new Map<number, string>();
   private dbService: IPrismaService;
   private openAIService: IOpenAIService;
+
+  private readonly runIdsByChatId = new Map<number, string>();
+  private readonly registrationSteps = new Map<number, ERegistrationSteps>();
 
   private constructor() {
     this.bot = new TelegramBot(appConfig.telegramBotToken, {
@@ -53,30 +58,9 @@ export class TelegramService implements ITelegramService {
       const chatId = chat.id;
       const userPrompt = formatInputText(text!);
 
-      if (this.runIdsByChatId.has(chatId))
-        return this.sendMessageSafe(
-          chatId,
-          TELEGRAM_MESSAGES.WAIT_FOR_PREVIOUS_REQUEST,
-        );
+      const canContinue = await this.runGuards({ user, chatId, userPrompt });
 
-      if (user.is_bot) {
-        return this.sendMessageSafe(
-          chatId,
-          TELEGRAM_MESSAGES.BOTS_NOT_SUPPORTED,
-        );
-      }
-
-      if (!userPrompt) {
-        return this.sendMessageSafe(chatId, TELEGRAM_MESSAGES.ONLY_TEXT_INPUT);
-      }
-
-      const hasLimitReached = await this.dbService.checkUserLimitReached(
-        user.id,
-      );
-
-      if (hasLimitReached) {
-        return this.sendMessageSafe(chatId, TELEGRAM_MESSAGES.LIMIT_REACHED);
-      }
+      if (!canContinue) return;
 
       return this.processUserPrompt({ chatId, user, userPrompt }).catch(
         (error) => {
@@ -130,6 +114,15 @@ export class TelegramService implements ITelegramService {
     });
 
     this.bot.on('message', (msg) => {
+      const user = msg.from!;
+      if (this.registrationSteps.get(user?.id!) === 'phone' && msg.contact) {
+        this.checkUserRegistration({
+          user,
+          chatId: msg.chat.id,
+          userPrompt: msg.contact.phone_number,
+        });
+        return;
+      }
       !msg.text &&
         this.sendMessageSafe(msg.chat.id, TELEGRAM_MESSAGES.ONLY_TEXT_SUPPORT);
     });
@@ -140,6 +133,126 @@ export class TelegramService implements ITelegramService {
   }
 
   // === ====================================== METHODS ==================================================== ===
+  private runGuards = async (props: {
+    user: TelegramBot.User;
+    chatId: number;
+    userPrompt: string;
+  }) => {
+    const { user, chatId, userPrompt } = props;
+    if (!userPrompt) {
+      this.sendMessageSafe(chatId, TELEGRAM_MESSAGES.ONLY_TEXT_INPUT);
+      return false;
+    }
+
+    const isUserRegistered = await this.checkUserRegistration(props);
+    if (!isUserRegistered) return false;
+
+    if (this.runIdsByChatId.has(chatId)) {
+      this.sendMessageSafe(chatId, TELEGRAM_MESSAGES.WAIT_FOR_PREVIOUS_REQUEST);
+      return false;
+    }
+
+    if (user.is_bot) {
+      this.sendMessageSafe(chatId, TELEGRAM_MESSAGES.BOTS_NOT_SUPPORTED);
+      return false;
+    }
+
+    const hasLimitReached = await this.dbService.checkUserLimitReached(user.id);
+
+    if (hasLimitReached) {
+      this.sendMessageSafe(chatId, TELEGRAM_MESSAGES.LIMIT_REACHED);
+      return false;
+    }
+
+    return true;
+  };
+
+  private checkUserRegistration = async (props: {
+    user: TelegramBot.User;
+    chatId: number;
+    userPrompt: string;
+  }) => {
+    try {
+      const { user, chatId, userPrompt } = props;
+      await this.saveUserRegistrationData(props);
+
+      const { firstName, phone, lastName } =
+        await this.dbService.checkUserInfoCompleteness(user.id);
+
+      if (!firstName) {
+        this.sendMessageSafe(chatId, TELEGRAM_MESSAGES.ENTER_FIRST_NAME);
+        this.registrationSteps.set(user.id, ERegistrationSteps.FIRST_NAME);
+        return false;
+      }
+
+      if (!lastName) {
+        this.sendMessageSafe(chatId, TELEGRAM_MESSAGES.ENTER_LAST_NAME);
+        this.registrationSteps.set(user.id, ERegistrationSteps.LAST_NAME);
+        return false;
+      }
+
+      if (!phone) {
+        this.sendMessageSafe(chatId, TELEGRAM_MESSAGES.ENTER_PHONE);
+        this.registrationSteps.set(user.id, ERegistrationSteps.PHONE);
+        return false;
+      }
+
+      const hadRegistrationStep = this.registrationSteps.delete(user.id);
+      if (hadRegistrationStep) {
+        this.sendMessageSafe(chatId, TELEGRAM_MESSAGES.REGISTRATION_SUCCESS);
+        this.sendMessageSafe(chatId, TELEGRAM_MESSAGES.START_MESSAGE, {
+          parse_mode: 'HTML',
+        });
+        return false;
+      }
+
+      return true;
+    } catch (err) {
+      console.error('Error while checking user registration:', err);
+      return false;
+    }
+  };
+
+  private saveUserRegistrationData = async ({
+    user,
+    chatId,
+    userPrompt,
+  }: {
+    user: TelegramBot.User;
+    chatId: number;
+    userPrompt: string;
+  }) => {
+    const registrationStep = this.registrationSteps.get(user.id);
+    if (!registrationStep) return;
+
+    switch (registrationStep) {
+      case ERegistrationSteps.FIRST_NAME:
+        await this.dbService.upsertUserByTelegramId(user, {
+          chatId,
+          enteredFirstName: userPrompt.slice(0, 50),
+        });
+        break;
+      case ERegistrationSteps.LAST_NAME:
+        await this.dbService.upsertUserByTelegramId(user, {
+          chatId,
+          enteredLastName: userPrompt.slice(0, 50),
+        });
+        break;
+      case ERegistrationSteps.PHONE:
+        const formattedPhoneNumber = formatPhoneNumber(userPrompt);
+        const isValidPhone = validatePhoneNumber(formattedPhoneNumber);
+        if (!isValidPhone) {
+          this.sendMessageSafe(chatId, TELEGRAM_MESSAGES.ENTER_VALID_PHONE);
+          return false;
+        }
+        await this.dbService.upsertUserByTelegramId(user, {
+          chatId,
+          phoneNumber: `+${formattedPhoneNumber}`,
+        });
+        break;
+    }
+  };
+
   sendMessageSafe: ITelegramService['sendMessageSafe'] = async (
     chatId,
     text,
@@ -158,8 +271,7 @@ export class TelegramService implements ITelegramService {
       const dbUser = await this.dbService.getUserByTelegramId(user.id);
 
       if (!dbUser) {
-        const createdUser = await this.dbService.upsertUserByTelegramId({
-          user,
+        const createdUser = await this.dbService.upsertUserByTelegramId(user, {
           chatId,
         });
         createdUser && console.log('[NEW_USER]:', createdUser.username);
@@ -295,7 +407,7 @@ export class TelegramService implements ITelegramService {
     threadId,
   }) => {
     this.dbService.decreaseUserLimit(user.id, totalUsage);
-    this.dbService.upsertUserByTelegramId({ user, chatId });
+    this.dbService.upsertUserByTelegramId(user, { chatId });
     this.dbService.upsertThread({ id: threadId, chatId, userTgId: user.id });
   };
 
@@ -325,7 +437,15 @@ export class TelegramService implements ITelegramService {
     chatId,
   }) => {
     try {
-      this.handleNewUser({ user, chatId });
+      await this.handleNewUser({ user, chatId });
+
+      const isRegistered = await this.checkUserRegistration({
+        user,
+        chatId,
+        userPrompt: '',
+      });
+      if (!isRegistered) return;
+
       return this.sendMessageSafe(chatId, TELEGRAM_MESSAGES.START_MESSAGE, {
         parse_mode: 'HTML',
       });

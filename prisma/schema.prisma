@@ -8,16 +8,18 @@ datasource db {
 }
 
 model User {
-  telegramId    Int      @id @map("_id")
-  firstName     String
-  lastName      String?
-  username      String?
-  phoneNumber   String?
-  languageCode  String
-  isPremium     Boolean
-  chatId        Int
-  createdAt     DateTime @default(now())
-  lastMessageAt DateTime @default(now())
+  telegramId       Int      @id @map("_id")
+  firstName        String
+  lastName         String?
+  username         String?
+  enteredFirstName String?
+  enteredLastName  String?
+  phoneNumber      String?
+  languageCode     String
+  isPremium        Boolean
+  chatId           Int
+  createdAt        DateTime @default(now())
+  lastMessageAt    DateTime @default(now())
 
   threadId String?
   Thread   Thread?
