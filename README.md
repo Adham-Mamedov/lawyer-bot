@@ -43,4 +43,4 @@ This project aims to provide a legal assistant chatbot powered by OpenAI's RWST 
 - [ ] Enable in group chat
 - [ ] Add donations button and increase limit for tpd for those users
 - [ ] Add Ads for law firms
-- [ ] Save Bot info to DB
+- [ ] Save bot-users info to DB
