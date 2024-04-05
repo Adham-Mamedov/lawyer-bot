@@ -11,6 +11,7 @@ import OpenAI from 'openai';
 import { poll } from '@src/utils/async.utils';
 import { openAIMessagesPageToTelegramMessages } from '@src/helpers/message.helpers';
 import { appConfig } from '@src/config/app.config';
+import { Logger } from '@src/main';
 
 export class OpenAIService implements IOpenAIService {
   private static instance: OpenAIService;
@@ -37,7 +38,7 @@ export class OpenAIService implements IOpenAIService {
     try {
       return await this.openAI.files.retrieve(id);
     } catch (error) {
-      console.error(error);
+      Logger.error(error, '[OpenAIService]: Error getting file by id');
       return null;
     }
   };
@@ -48,7 +49,7 @@ export class OpenAIService implements IOpenAIService {
     try {
       return await this.openAI.files.list(query);
     } catch (error) {
-      console.error(error);
+      Logger.error(error, '[OpenAIService]: Error getting files');
       return null;
     }
   };
@@ -59,7 +60,7 @@ export class OpenAIService implements IOpenAIService {
     try {
       return await this.openAI.files.create(params);
     } catch (error) {
-      console.error(error);
+      Logger.error(error, '[OpenAIService]: Error creating file');
       return null;
     }
   };
@@ -69,7 +70,7 @@ export class OpenAIService implements IOpenAIService {
     try {
       return await this.openAI.beta.assistants.list();
     } catch (error) {
-      console.error(error);
+      Logger.error(error, '[OpenAIService]: Error getting assistants');
       return null;
     }
   };
@@ -81,7 +82,7 @@ export class OpenAIService implements IOpenAIService {
     try {
       return await this.openAI.beta.assistants.update(id, assistantDTO);
     } catch (error) {
-      console.error(error);
+      Logger.error(error, '[OpenAIService]: Error updating assistant');
       return null;
     }
   };
@@ -96,7 +97,7 @@ export class OpenAIService implements IOpenAIService {
     try {
       return await this.openAI.beta.threads.del(threadId);
     } catch (error) {
-      console.error(error);
+      Logger.error(error, '[OpenAIService]: Error deleting run');
       return null;
     }
   };
@@ -120,7 +121,7 @@ export class OpenAIService implements IOpenAIService {
     try {
       return await this.openAI.beta.threads.runs.cancel(run.thread_id, run.id);
     } catch (error) {
-      console.log(error);
+      Logger.error(error, '[OpenAIService]: Error canceling run');
       return null;
     }
   };
@@ -143,6 +144,7 @@ export class OpenAIService implements IOpenAIService {
             .withResponse();
         },
         isSuccessCondition: ({ data: run }) => {
+          // TODO: remove log
           console.log('Run status:', run.status);
           return (
             successStatuses.includes(run.status) ||
@@ -163,7 +165,7 @@ export class OpenAIService implements IOpenAIService {
 
       return onFailure(resolvedRun, response);
     } catch (error) {
-      console.error('Error during run processing:', error);
+      Logger.error(error, '[OpenAIService]: Error during run processing');
     }
   };
 
@@ -179,6 +181,7 @@ export class OpenAIService implements IOpenAIService {
       },
     );
 
+    //TODO: remove log
     console.dir(run.usage, { depth: 3 });
 
     const replyMessages = openAIMessagesPageToTelegramMessages(messages);

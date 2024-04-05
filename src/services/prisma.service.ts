@@ -7,6 +7,7 @@ import {
   THREAD_EXPIRATION_TIME,
   TOKENS_PER_DAY_LIMIT,
 } from '@src/config/defaults.config';
+import { Logger } from '@src/main';
 
 export class PrismaService implements IPrismaService {
   private static instance: PrismaService;
@@ -69,7 +70,7 @@ export class PrismaService implements IPrismaService {
         },
       });
     } catch (error) {
-      console.log('Error getting user by telegramId:', error);
+      Logger.error(error, '[PrismaService]: Error getting user by telegramId');
       return null;
     }
   };
@@ -102,7 +103,7 @@ export class PrismaService implements IPrismaService {
         },
       });
     } catch (error) {
-      console.log('Error creating user:', error);
+      Logger.error(error, '[PrismaService]: Error creating user');
       return null;
     }
   };
@@ -126,7 +127,7 @@ export class PrismaService implements IPrismaService {
         },
       });
     } catch (error) {
-      console.log('Error getting thread by chatId:', error);
+      Logger.error(error, '[PrismaService]: Error getting thread by chatId');
       return null;
     }
   };
@@ -153,7 +154,7 @@ export class PrismaService implements IPrismaService {
         },
       });
     } catch (error) {
-      console.log('Error updating thread:', error);
+      Logger.error(error, '[PrismaService]: Error upserting thread');
       return null;
     }
   };
@@ -166,7 +167,7 @@ export class PrismaService implements IPrismaService {
         },
       });
     } catch (error) {
-      console.log('Error deleting thread:', error);
+      Logger.error(error, '[PrismaService]: Error deleting thread');
       return null;
     }
   };
@@ -193,7 +194,7 @@ export class PrismaService implements IPrismaService {
 
       return limit?.tpd || -1;
     } catch (error) {
-      console.log('Error getting user limit:', error);
+      Logger.error(error, '[PrismaService]: Error getting user limit');
       return -1;
     }
   };
@@ -205,7 +206,7 @@ export class PrismaService implements IPrismaService {
       const limit = await this.getUserLimit(userId);
       return limit <= MIN_TOKENS_FOR_REQUEST;
     } catch (error) {
-      console.log('Error checking user limit:', error);
+      Logger.error(error, '[PrismaService]: Error checking user limit');
       return true;
     }
   };
@@ -231,7 +232,7 @@ export class PrismaService implements IPrismaService {
         },
       });
     } catch (error) {
-      console.log('Error decreasing user limit:', error);
+      Logger.error(error, '[PrismaService]: Error decreasing user limit');
       return null;
     }
   };

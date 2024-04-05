@@ -6,6 +6,7 @@ import {
 } from 'fastify';
 import { APIError } from 'openai';
 import { OpenAIService } from '@src/services/openAI.service';
+import { Logger } from '@src/main';
 
 const openAIService = OpenAIService.getInstance();
 
@@ -38,7 +39,7 @@ export const getFileRoute: RouteOptions = {
       if (error instanceof APIError) {
         return reply.status(error.status || 500).send({ error: error.message }); // TODO: error.message can contain sensitive info!
       }
-      console.error(error);
+      Logger.error(error, 'getFileRoute');
       reply.status(500).send({ error: 'Internal Server Error' });
     }
   },

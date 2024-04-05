@@ -6,6 +6,7 @@ import {
 } from 'fastify';
 import { OpenAIService } from '@src/services/openAI.service';
 import { AssistantUpdateParams } from '@src/types/openAI.types';
+import { Logger } from '@src/main';
 
 const openAIService = OpenAIService.getInstance();
 
@@ -46,7 +47,7 @@ export const updateAssistantRoute: RouteOptions = {
       const assistant = await openAIService.updateAssistant(id, assistantDTO);
       reply.send(assistant);
     } catch (error) {
-      console.error(error);
+      Logger.error(error, 'updateAssistantRoute');
       reply.status(500).send({ error: 'Internal Server Error' });
     }
   },

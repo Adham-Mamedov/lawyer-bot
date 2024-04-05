@@ -7,6 +7,7 @@ import {
 import fs from 'fs';
 import { getDatasetPath } from '@src/utils/dataset.utils';
 import { OpenAIService } from '@src/services/openAI.service';
+import { Logger } from '@src/main';
 
 const openAIService = OpenAIService.getInstance();
 
@@ -37,7 +38,7 @@ export const uploadFileRoute: RouteOptions = {
 
       reply.send(res);
     } catch (error) {
-      console.error(error);
+      Logger.error(error, 'uploadFileRoute');
       reply.status(500).send({ error: 'Internal Server Error' });
     }
   },

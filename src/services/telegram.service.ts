@@ -13,6 +13,7 @@ import {
 import { wait } from '@src/utils/async.utils';
 import { appConfig } from '@src/config/app.config';
 import { TELEGRAM_MESSAGES } from '@src/config/defaults.config';
+import { Logger } from '@src/main';
 
 // TODO: restrict out-of-context messages (Create separate assistant to check if message is related to the context)
 
@@ -64,7 +65,10 @@ export class TelegramService implements ITelegramService {
 
       return this.processUserPrompt({ chatId, user, userPrompt }).catch(
         (error) => {
-          console.error('Error while processing user prompt:', error);
+          Logger.error(
+            error,
+            '[TelegramService]: Error processing user prompt',
+          );
           this.sendMessageSafe(
             chatId,
             TELEGRAM_MESSAGES.ERROR_PROCESSING_REQUEST,
@@ -128,7 +132,7 @@ export class TelegramService implements ITelegramService {
     });
 
     this.bot.on('error', (error) => {
-      console.error('An error occurred:', error);
+      Logger.error(error, '[TelegramService]: Error in bot');
     });
   }
 
@@ -173,7 +177,7 @@ export class TelegramService implements ITelegramService {
     userPrompt: string;
   }) => {
     try {
-      const { user, chatId, userPrompt } = props;
+      const { user, chatId } = props;
       await this.saveUserRegistrationData(props);
 
       const { firstName, phone, lastName } =
@@ -207,8 +211,11 @@ export class TelegramService implements ITelegramService {
       }
 
       return true;
-    } catch (err) {
-      console.error('Error while checking user registration:', err);
+    } catch (error) {
+      Logger.error(
+        error,
+        '[TelegramService]: Error checking user registration',
+      );
       return false;
     }
   };
@@ -259,7 +266,7 @@ export class TelegramService implements ITelegramService {
     options,
   ) => {
     return this.bot.sendMessage(chatId, text, options).catch((error) => {
-      console.error('Error while sending message:', error);
+      Logger.error(error, '[TelegramService]: Error sending message');
     });
   };
 
@@ -274,10 +281,10 @@ export class TelegramService implements ITelegramService {
         const createdUser = await this.dbService.upsertUserByTelegramId(user, {
           chatId,
         });
-        createdUser && console.log('[NEW_USER]:', createdUser.username);
+        createdUser && Logger.info(createdUser.username, '[NEW_USER]:');
       }
     } catch (err) {
-      console.error('Error while handling new User:', err);
+      Logger.error(err, '[TelegramService]: Error handling new user');
     }
   };
 
@@ -368,7 +375,7 @@ export class TelegramService implements ITelegramService {
     retryCount,
     retryCb,
   }) => {
-    console.error('[On Failure]:', run);
+    Logger.error(run, '[TelegramService]: Error processing run');
 
     if (retryCount < 3 && run.last_error?.code === 'rate_limit_exceeded') {
       this.sendMessageSafe(chatId, TELEGRAM_MESSAGES.RATE_LIMIT_EXCEEDED);
@@ -387,7 +394,7 @@ export class TelegramService implements ITelegramService {
     retryCount,
     retryCb,
   }) => {
-    console.log('[On Timeout]:', run);
+    Logger.info(run, '[On Timeout]');
     if (retryCount > 0) {
       this.sendMessageSafe(chatId, TELEGRAM_MESSAGES.ERROR_PROCESSING_REQUEST);
       return;
@@ -412,6 +419,7 @@ export class TelegramService implements ITelegramService {
   };
 
   sendMessages: ITelegramService['sendMessages'] = async (chatId, messages) => {
+    // TODO: remove console.log
     console.log('Sending messages:', messages);
     for (const message of messages) {
       await this.sendMessageSafe(chatId, message, { parse_mode: 'HTML' });
@@ -450,7 +458,7 @@ export class TelegramService implements ITelegramService {
         parse_mode: 'HTML',
       });
     } catch (err) {
-      console.error('Error while handling Start:', err);
+      Logger.error(err, '[TelegramService]: Error handling Start command');
       return this.sendMessageSafe(
         chatId,
         TELEGRAM_MESSAGES.ERROR_PROCESSING_REQUEST,
@@ -471,7 +479,7 @@ export class TelegramService implements ITelegramService {
         parse_mode: 'HTML',
       });
     } catch (err) {
-      console.error('Error while handling new Thread:', err);
+      Logger.error(err, '[TelegramService]: Error handling New Thread command');
       return this.sendMessageSafe(
         chatId,
         TELEGRAM_MESSAGES.ERROR_PROCESSING_REQUEST,
@@ -494,7 +502,10 @@ export class TelegramService implements ITelegramService {
         { parse_mode: 'HTML' },
       );
     } catch (err) {
-      console.error('Error while handling Check Limit:', err);
+      Logger.error(
+        err,
+        '[TelegramService]: Error handling Check Limit command',
+      );
       return this.sendMessageSafe(
         chatId,
         TELEGRAM_MESSAGES.ERROR_PROCESSING_REQUEST,
@@ -508,7 +519,7 @@ export class TelegramService implements ITelegramService {
         parse_mode: 'HTML',
       });
     } catch (err) {
-      console.error('Error while handling Help:', err);
+      Logger.error(err, '[TelegramService]: Error handling Help command');
       return this.sendMessageSafe(
         chatId,
         TELEGRAM_MESSAGES.ERROR_PROCESSING_REQUEST,

@@ -5,6 +5,7 @@ import {
   RouteOptions,
 } from 'fastify';
 import { OpenAIService } from '@src/services/openAI.service';
+import { Logger } from '@src/main';
 
 const openAIService = OpenAIService.getInstance();
 
@@ -24,7 +25,7 @@ export const getAllFilesRoute: RouteOptions = {
       const files = res?.data || [];
       reply.send(files);
     } catch (error) {
-      console.error(error);
+      Logger.error(error, 'getAllFilesRoute');
       reply.status(500).send({ error: 'Internal Server Error' });
     }
   },

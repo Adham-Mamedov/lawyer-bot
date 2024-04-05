@@ -6,8 +6,28 @@ import { validateEnv } from '@src/utils/app.utils';
 import { TelegramService } from '@src/services/telegram.service';
 
 const server = fastify({
-  logger: true,
+  logger: {
+    level: 'info',
+    customLevels: ['error'],
+  },
 });
+
+export const Logger = {
+  info: (message: unknown, scope?: string) => {
+    server.log.info({
+      type: 'INFO',
+      scope,
+      message,
+    });
+  },
+  error: (message: unknown, scope?: string) => {
+    server.log.error({
+      type: 'ERROR',
+      scope,
+      message,
+    });
+  },
+};
 
 registerRoutes(server);
 

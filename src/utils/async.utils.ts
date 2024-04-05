@@ -1,3 +1,5 @@
+import { Logger } from '@src/main';
+
 export const wait = async (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export interface PollingOptions<T> {
@@ -28,12 +30,12 @@ export async function poll<T>(options: PollingOptions<T>): Promise<T | null> {
 
       await new Promise((resolve) => setTimeout(resolve, interval));
     } catch (error) {
-      console.error('Error during polling:', error);
+      Logger.error(error, '[Polling]: Error during polling');
     }
 
     attempts++;
   }
 
-  console.error('Polling reached maximum attempts without success.');
+  Logger.error(`Polling failed after ${maxAttempts} attempts`, '[Polling]');
   return null;
 }

@@ -7,7 +7,6 @@ export const validateEnv = () => {
   );
 
   if (missingVariables.length > 0) {
-    // TODO: replace with Logger
     console.error(
       `Missing environment variables: ${missingVariables.join(', ')}`,
     );
