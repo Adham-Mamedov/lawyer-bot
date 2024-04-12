@@ -1,9 +1,10 @@
 import 'dotenv/config';
 import '@total-typescript/ts-reset';
 import fastify from 'fastify';
-import { registerRoutes } from '@src/routes';
+import { registerAPIRoutes } from '@src/routes';
 import { validateEnv } from '@src/utils/app.utils';
 import { TelegramService } from '@src/services/telegram.service';
+import { appConfig } from '@src/config/app.config';
 
 const server = fastify({
   logger: {
@@ -29,7 +30,9 @@ export const Logger = {
   },
 };
 
-registerRoutes(server);
+if (appConfig.isDev) {
+  registerAPIRoutes(server);
+}
 
 const runServer = () => {
   validateEnv();

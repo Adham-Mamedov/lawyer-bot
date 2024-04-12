@@ -4,7 +4,7 @@ import { FastifyInstance } from 'fastify';
 
 const routes = { ...fileRoutes, ...assistantRoutes };
 
-export const registerRoutes = (server: FastifyInstance) => {
+export const registerAPIRoutes = (server: FastifyInstance) => {
   Object.values(routes).forEach((route) => {
     server.route(route);
   });
