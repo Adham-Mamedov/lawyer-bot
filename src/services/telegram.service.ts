@@ -45,6 +45,7 @@ export class TelegramService implements ITelegramService {
     this.initBot();
     this.initCommands();
     this.initErrorHandlers();
+    Logger.info('Telegram bot is running', 'TelegramService');
   }
 
   private initBot() {

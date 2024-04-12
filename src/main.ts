@@ -42,6 +42,8 @@ const runServer = () => {
       process.exit(1);
     }
   });
+
+  Logger.info(`Server running in ${process.env.NODE_ENV} mode`, 'Server');
 };
 
 const telegramService = TelegramService.getInstance();
