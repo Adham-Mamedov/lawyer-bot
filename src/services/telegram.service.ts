@@ -420,8 +420,6 @@ export class TelegramService implements ITelegramService {
   };
 
   sendMessages: ITelegramService['sendMessages'] = async (chatId, messages) => {
-    // TODO: remove console.log
-    console.log('Sending messages:', messages);
     for (const message of messages) {
       await this.sendMessageSafe(chatId, message, { parse_mode: 'HTML' });
     }

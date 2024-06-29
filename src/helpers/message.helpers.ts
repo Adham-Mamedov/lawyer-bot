@@ -19,9 +19,10 @@ export const openAIMessageToTelegramMessages = (message: ThreadMessage) => {
         if (annotation.type !== 'file_citation') return;
         textWithCitations = textWithCitations.replaceAll(
           annotation.text,
-          annotation.file_citation?.quote
-            ? `<pre>${annotation.file_citation.quote.trim()}</pre>`
-            : '',
+          '', // TODO: add citation when openAI adds it to response
+          // annotation.text
+          //   ? `<pre>${annotation.file_citation.quote.trim()}</pre>`
+          //   : '',
         );
       });
 

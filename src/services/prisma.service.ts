@@ -25,8 +25,8 @@ export class PrismaService implements IPrismaService {
   }
 
   public createCustomIndexes() {
-    // this.createExpirationIndex('threads');
-    // this.createExpirationIndex('limits');
+    this.createExpirationIndex('threads');
+    this.createExpirationIndex('limits');
   }
 
   createExpirationIndex: IPrismaService['createExpirationIndex'] = (

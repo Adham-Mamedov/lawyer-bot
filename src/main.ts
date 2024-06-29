@@ -5,6 +5,7 @@ import { registerAPIRoutes } from '@src/routes';
 import { validateEnv } from '@src/utils/app.utils';
 import { TelegramService } from '@src/services/telegram.service';
 import { appConfig } from '@src/config/app.config';
+import { PrismaService } from '@src/services/prisma.service';
 
 const server = fastify({
   logger: {
@@ -36,6 +37,8 @@ if (appConfig.isDev) {
 
 const runServer = () => {
   validateEnv();
+  const dbService = PrismaService.getInstance();
+  dbService.createCustomIndexes();
   server.listen({ port: 3000 }, (err: Error | null) => {
     if (err) {
       console.error(err);

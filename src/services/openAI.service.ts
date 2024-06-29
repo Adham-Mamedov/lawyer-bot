@@ -144,8 +144,6 @@ export class OpenAIService implements IOpenAIService {
             .withResponse();
         },
         isSuccessCondition: ({ data: run }) => {
-          // TODO: remove log
-          console.log('Run status:', run.status);
           return (
             successStatuses.includes(run.status) ||
             failedStatuses.includes(run.status)
