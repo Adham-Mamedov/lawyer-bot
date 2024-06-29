@@ -37,7 +37,6 @@ model Thread {
   expiresAt DateTime // AUTO-DELETE THREAD AFTER THIS DATE
   createdAt DateTime @default(now())
 
-  @@index(expiresAt, map: "expiresAt_auto_delete")
   @@map("threads")
 }
 
@@ -50,6 +49,5 @@ model Limit {
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now())
 
-  @@index(expiresAt, map: "expiresAt_auto_delete")
   @@map("limits")
 }
