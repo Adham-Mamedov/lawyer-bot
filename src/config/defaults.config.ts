@@ -1,5 +1,6 @@
 const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
 
+export const HEALTH_PING_INTERVAL = 60 * 60 * 1000; // 1 hour
 export const MAX_TG_MESSAGE_LENGTH = 3600;
 
 export const TOKENS_PER_DAY_LIMIT = 200_000;

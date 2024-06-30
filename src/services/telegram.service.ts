@@ -12,7 +12,10 @@ import {
 } from '@src/utils/telegram.utils';
 import { wait } from '@src/utils/async.utils';
 import { appConfig } from '@src/config/app.config';
-import { TELEGRAM_MESSAGES } from '@src/config/defaults.config';
+import {
+  HEALTH_PING_INTERVAL,
+  TELEGRAM_MESSAGES,
+} from '@src/config/defaults.config';
 import { Logger } from '@src/main';
 
 // TODO: restrict out-of-context messages (Create separate assistant to check if message is related to the context)
@@ -43,9 +46,21 @@ export class TelegramService implements ITelegramService {
 
   public init() {
     this.initBot();
+    this.initHealthPing();
     this.initCommands();
     this.initErrorHandlers();
     Logger.info('Telegram bot is running', 'TelegramService');
+  }
+
+  private initHealthPing() {
+    const healthPingChatId = appConfig.healthPingChatId;
+    if (!healthPingChatId) return;
+    setInterval(() => {
+      this.bot.sendMessage(
+        appConfig.healthPingChatId,
+        'Telegram bot is running',
+      );
+    }, HEALTH_PING_INTERVAL);
   }
 
   private initBot() {
