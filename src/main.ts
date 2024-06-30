@@ -39,6 +39,14 @@ const runServer = () => {
   validateEnv();
   const dbService = PrismaService.getInstance();
   dbService.createCustomIndexes();
+  server.route({
+    url: '/',
+    method: 'GET',
+    handler: async () => {
+      return { status: 'ok' };
+    },
+  });
+
   server.listen({ port: 3000 }, (err: Error | null) => {
     if (err) {
       console.error(err);

@@ -34,6 +34,7 @@
     "typescript": "^5.3.3"
   },
   "scripts": {
+    "postinstall": "npm run build",
     "build": "tsc && tsc-alias -p tsconfig.json",
     "start": "NODE_ENV=production node dist/main.js",
     "dev": "yarn prisma:generate && cross-env NODE_ENV=development nodemon --watch src src/main.ts",
