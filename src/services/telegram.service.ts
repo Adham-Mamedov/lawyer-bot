@@ -196,7 +196,7 @@ export class TelegramService implements ITelegramService {
       const { user, chatId } = props;
       await this.saveUserRegistrationData(props);
 
-      const { firstName, phone, lastName } =
+      const { firstName, lastName } =
         await this.dbService.checkUserInfoCompleteness(user.id);
 
       if (!firstName) {
@@ -211,11 +211,11 @@ export class TelegramService implements ITelegramService {
         return false;
       }
 
-      if (!phone) {
-        this.sendMessageSafe(chatId, TELEGRAM_MESSAGES.ENTER_PHONE);
-        this.registrationSteps.set(user.id, ERegistrationSteps.PHONE);
-        return false;
-      }
+      // if (!phone) {
+      //   this.sendMessageSafe(chatId, TELEGRAM_MESSAGES.ENTER_PHONE);
+      //   this.registrationSteps.set(user.id, ERegistrationSteps.PHONE);
+      //   return false;
+      // }
 
       const hadRegistrationStep = this.registrationSteps.delete(user.id);
       if (hadRegistrationStep) {
