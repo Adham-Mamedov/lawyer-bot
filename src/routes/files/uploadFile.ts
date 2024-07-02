@@ -5,8 +5,11 @@ import {
   RouteOptions,
 } from 'fastify';
 import fs from 'fs';
-import { getDatasetPath } from '@src/utils/dataset.utils';
+
 import { OpenAIService } from '@src/services/openAI.service';
+
+import { getDatasetPath } from '@src/utils/dataset.utils';
+
 import { Logger } from '@src/main';
 
 const openAIService = OpenAIService.getInstance();

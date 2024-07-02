@@ -1,12 +1,16 @@
 import { PrismaClient } from '@prisma/client';
-import { IPrismaService } from '@src/types/prisma.types';
-import { User } from '@src/types/telegram.types';
+
 import { getNextDayMidnightInUTC } from '@src/utils/time.utils';
+
 import {
   MIN_TOKENS_FOR_REQUEST,
   THREAD_EXPIRATION_TIME,
   TOKENS_PER_DAY_LIMIT,
 } from '@src/config/defaults.config';
+
+import { IPrismaService } from '@src/types/prisma.types';
+import { User } from '@src/types/telegram.types';
+
 import { Logger } from '@src/main';
 
 export class PrismaService implements IPrismaService {

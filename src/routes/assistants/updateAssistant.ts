@@ -4,8 +4,11 @@ import {
   HTTPMethods,
   RouteOptions,
 } from 'fastify';
+
 import { OpenAIService } from '@src/services/openAI.service';
+
 import { AssistantUpdateParams } from '@src/types/openAI.types';
+
 import { Logger } from '@src/main';
 
 const openAIService = OpenAIService.getInstance();

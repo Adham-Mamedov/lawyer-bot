@@ -1,5 +1,6 @@
-import { ThreadMessage, ThreadMessagesPage } from '../types/openAI.types';
 import { MAX_TG_MESSAGE_LENGTH } from '@src/config/defaults.config';
+
+import { ThreadMessage, ThreadMessagesPage } from '../types/openAI.types';
 
 export const openAIMessagesPageToTelegramMessages = (
   messages: ThreadMessagesPage,

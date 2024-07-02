@@ -1,4 +1,5 @@
 import { appConfig } from '@src/config/app.config';
+
 import { AppConfig } from '@src/types/config.types';
 
 export const validateEnv = () => {

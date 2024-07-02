@@ -1,22 +1,24 @@
 import TelegramBot from 'node-telegram-bot-api';
-import { ETelegramCommands, ITelegramService } from '@src/types/telegram.types';
-import { IOpenAIService, Run } from '@src/types/openAI.types';
-import { ERegistrationSteps, IPrismaService } from '@src/types/prisma.types';
-import { INotificationService } from '@src/types/notification.types';
 
-import { PrismaService } from '@src/services/prisma.service';
 import { OpenAIService } from '@src/services/openAI.service';
+import { PrismaService } from '@src/services/prisma.service';
+
+import { wait } from '@src/utils/async.utils';
 import {
   formatInputText,
   formatPhoneNumber,
   validatePhoneNumber,
 } from '@src/utils/telegram.utils';
-import { wait } from '@src/utils/async.utils';
+
 import { appConfig } from '@src/config/app.config';
 import { TELEGRAM_MESSAGES } from '@src/config/defaults.config';
-import { Logger } from '@src/main';
 
-// TODO: restrict out-of-context messages (Create separate assistant to check if message is related to the context)
+import { INotificationService } from '@src/types/notification.types';
+import { IOpenAIService, Run } from '@src/types/openAI.types';
+import { ERegistrationSteps, IPrismaService } from '@src/types/prisma.types';
+import { ETelegramCommands, ITelegramService } from '@src/types/telegram.types';
+
+import { Logger } from '@src/main';
 
 export class TelegramService implements ITelegramService {
   private static instance: TelegramService;

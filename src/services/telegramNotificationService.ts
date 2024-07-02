@@ -1,7 +1,9 @@
+import { TelegramService } from '@src/services/telegram.service';
+
+import { HEALTH_PING_INTERVAL } from '@src/config/defaults.config';
+
 import { INotificationService } from '@src/types/notification.types';
 import { ITelegramService } from '@src/types/telegram.types';
-import { TelegramService } from '@src/services/telegram.service';
-import { HEALTH_PING_INTERVAL } from '@src/config/defaults.config';
 
 export class TelegramNotificationService implements INotificationService {
   private readonly telegramService: ITelegramService;

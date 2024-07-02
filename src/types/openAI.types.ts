@@ -1,5 +1,5 @@
-import { Response } from 'openai/_shims/node-types';
 import { OpenAI } from 'openai';
+import { Response } from 'openai/_shims/node-types';
 
 export type FileObject = OpenAI.FileObject;
 export type FileObjectsPage = OpenAI.FileObjectsPage;

@@ -1,6 +1,7 @@
-import fileRoutes from './files';
-import assistantRoutes from './assistants';
 import { FastifyInstance } from 'fastify';
+
+import assistantRoutes from './assistants';
+import fileRoutes from './files';
 
 const routes = { ...fileRoutes, ...assistantRoutes };
 

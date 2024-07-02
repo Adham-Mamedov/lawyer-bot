@@ -1,12 +1,16 @@
-import 'dotenv/config';
 import '@total-typescript/ts-reset';
+import 'dotenv/config';
 import fastify from 'fastify';
-import { registerAPIRoutes } from '@src/routes';
-import { validateEnv } from '@src/utils/app.utils';
-import { appConfig } from '@src/config/app.config';
-import { TelegramService } from '@src/services/telegram.service';
+
 import { PrismaService } from '@src/services/prisma.service';
+import { TelegramService } from '@src/services/telegram.service';
 import { TelegramNotificationService } from '@src/services/telegramNotificationService';
+
+import { validateEnv } from '@src/utils/app.utils';
+
+import { appConfig } from '@src/config/app.config';
+
+import { registerAPIRoutes } from '@src/routes';
 
 const server = fastify({
   logger: {

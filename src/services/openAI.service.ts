@@ -1,16 +1,19 @@
+import OpenAI from 'openai';
+
+import { openAIMessagesPageToTelegramMessages } from '@src/helpers/message.helpers';
+import { poll } from '@src/utils/async.utils';
+
+import { appConfig } from '@src/config/app.config';
+
 import {
-  failedStatuses,
   FileCreateParams,
   FileListParams,
   IOpenAIService,
   Run,
+  failedStatuses,
   successStatuses,
 } from '@src/types/openAI.types';
-import OpenAI from 'openai';
 
-import { poll } from '@src/utils/async.utils';
-import { openAIMessagesPageToTelegramMessages } from '@src/helpers/message.helpers';
-import { appConfig } from '@src/config/app.config';
 import { Logger } from '@src/main';
 
 export class OpenAIService implements IOpenAIService {

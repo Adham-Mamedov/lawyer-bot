@@ -3,8 +3,9 @@ import TelegramBot, {
   Message,
   SendMessageOptions,
 } from 'node-telegram-bot-api';
-import { Run, Thread } from '@src/types/openAI.types';
+
 import { INotificationService } from '@src/types/notification.types';
+import { Run, Thread } from '@src/types/openAI.types';
 
 export type User = TelegramBot.User & { is_premium?: boolean };
 
