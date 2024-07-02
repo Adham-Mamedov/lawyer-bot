@@ -2,6 +2,7 @@ import TelegramBot from 'node-telegram-bot-api';
 import { ETelegramCommands, ITelegramService } from '@src/types/telegram.types';
 import { IOpenAIService, Run } from '@src/types/openAI.types';
 import { ERegistrationSteps, IPrismaService } from '@src/types/prisma.types';
+import { INotificationService } from '@src/types/notification.types';
 
 import { PrismaService } from '@src/services/prisma.service';
 import { OpenAIService } from '@src/services/openAI.service';
@@ -12,10 +13,7 @@ import {
 } from '@src/utils/telegram.utils';
 import { wait } from '@src/utils/async.utils';
 import { appConfig } from '@src/config/app.config';
-import {
-  HEALTH_PING_INTERVAL,
-  TELEGRAM_MESSAGES,
-} from '@src/config/defaults.config';
+import { TELEGRAM_MESSAGES } from '@src/config/defaults.config';
 import { Logger } from '@src/main';
 
 // TODO: restrict out-of-context messages (Create separate assistant to check if message is related to the context)
@@ -25,6 +23,7 @@ export class TelegramService implements ITelegramService {
   private readonly bot: TelegramBot;
   private dbService: IPrismaService;
   private openAIService: IOpenAIService;
+  private notificationService?: INotificationService;
 
   private readonly runIdsByChatId = new Map<number, string>();
   private readonly registrationSteps = new Map<number, ERegistrationSteps>();
@@ -49,18 +48,17 @@ export class TelegramService implements ITelegramService {
     this.initHealthPing();
     this.initCommands();
     this.initErrorHandlers();
-    Logger.info('Telegram bot is running', 'TelegramService');
   }
 
+  setNotificationService: ITelegramService['setNotificationService'] = (
+    service: INotificationService,
+  ) => {
+    if (this.notificationService) return;
+    this.notificationService = service;
+  };
+
   private initHealthPing() {
-    const healthPingChatId = appConfig.healthPingChatId;
-    if (!healthPingChatId) return;
-    setInterval(() => {
-      this.bot.sendMessage(
-        appConfig.healthPingChatId,
-        'Telegram bot is running',
-      );
-    }, HEALTH_PING_INTERVAL);
+    this.notificationService?.healthPing();
   }
 
   private initBot() {
@@ -149,6 +147,7 @@ export class TelegramService implements ITelegramService {
 
     this.bot.on('error', (error) => {
       Logger.error(error, '[TelegramService]: Error in bot');
+      this.notificationService?.onError(error);
     });
   }
 
@@ -297,7 +296,9 @@ export class TelegramService implements ITelegramService {
         const createdUser = await this.dbService.upsertUserByTelegramId(user, {
           chatId,
         });
-        createdUser && Logger.info(createdUser.username, '[NEW_USER]:');
+        if (createdUser) {
+          this.notificationService?.onNewUser(user);
+        }
       }
     } catch (err) {
       Logger.error(err, '[TelegramService]: Error handling new user');

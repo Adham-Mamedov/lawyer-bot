@@ -4,6 +4,7 @@ import TelegramBot, {
   SendMessageOptions,
 } from 'node-telegram-bot-api';
 import { Run, Thread } from '@src/types/openAI.types';
+import { INotificationService } from '@src/types/notification.types';
 
 export type User = TelegramBot.User & { is_premium?: boolean };
 
@@ -24,8 +25,9 @@ type TelegramCommands = {
   [ETelegramCommands.Help]: (options: { chatId: number }) => void;
 };
 
-export type ITelegramService = {
+export interface ITelegramService {
   init(): void;
+  setNotificationService(service: INotificationService): void;
 
   sendMessageSafe(
     chatId: ChatId,
@@ -77,4 +79,4 @@ export type ITelegramService = {
   onNewThreadCommand: TelegramCommands[ETelegramCommands.NewThread];
   onCheckLimitCommand: TelegramCommands[ETelegramCommands.CheckLimit];
   onHelpCommand: TelegramCommands[ETelegramCommands.Help];
-};
+}

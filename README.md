@@ -38,6 +38,7 @@ This project aims to provide a legal assistant chatbot powered by OpenAI's RWST 
 
 ### TODO:
 - [ ] Add more legal datasets
+- [ ] Add checking of legal documents
 - [ ] Use summaries of legal documents for better responses
 - [ ] Add caching for FAQ
 - [ ] Enable in group chat

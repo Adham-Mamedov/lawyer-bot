@@ -3,9 +3,10 @@ import '@total-typescript/ts-reset';
 import fastify from 'fastify';
 import { registerAPIRoutes } from '@src/routes';
 import { validateEnv } from '@src/utils/app.utils';
-import { TelegramService } from '@src/services/telegram.service';
 import { appConfig } from '@src/config/app.config';
+import { TelegramService } from '@src/services/telegram.service';
 import { PrismaService } from '@src/services/prisma.service';
+import { TelegramNotificationService } from '@src/services/telegramNotificationService';
 
 const server = fastify({
   logger: {
@@ -58,6 +59,9 @@ const runServer = () => {
 };
 
 const telegramService = TelegramService.getInstance();
+telegramService.setNotificationService(
+  new TelegramNotificationService(appConfig.healthPingChatId),
+);
 
 runServer();
 telegramService.init();
