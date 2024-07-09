@@ -287,6 +287,16 @@ export class TelegramService implements ITelegramService {
     });
   };
 
+  deleteMessageSafe: ITelegramService['deleteMessageSafe'] = async (
+    chatId,
+    messageId,
+    options,
+  ) => {
+    return this.bot.deleteMessage(chatId, messageId, options).catch((error) => {
+      Logger.error(error, '[TelegramService]: Error sending message');
+    });
+  };
+
   handleNewUser: ITelegramService['handleNewUser'] = async ({
     user,
     chatId,

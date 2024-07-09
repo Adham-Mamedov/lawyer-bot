@@ -36,6 +36,12 @@ export interface ITelegramService {
     options?: SendMessageOptions | undefined,
   ): Promise<Message | void>;
 
+  deleteMessageSafe(
+    chatId: ChatId,
+    messageId: number,
+    options?: any,
+  ): Promise<boolean | void>;
+
   handleNewUser(props: { user: User; chatId: number }): Promise<void>;
   processUserPrompt(props: {
     chatId: number;

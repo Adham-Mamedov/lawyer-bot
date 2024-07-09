@@ -8,6 +8,7 @@ import { ITelegramService } from '@src/types/telegram.types';
 export class TelegramNotificationService implements INotificationService {
   private readonly telegramService: ITelegramService;
   private healthPingTimeout?: NodeJS.Timeout;
+  private lastHealthPingMessageId?: number;
 
   constructor(private notifierChatId: string) {
     this.telegramService = TelegramService.getInstance();
@@ -23,11 +24,19 @@ export class TelegramNotificationService implements INotificationService {
   healthPing: INotificationService['healthPing'] = () => {
     if (!this.notifierChatId || this.healthPingTimeout) return;
 
-    this.healthPingTimeout = setInterval(() => {
-      this.telegramService.sendMessageSafe(
+    this.healthPingTimeout = setInterval(async () => {
+      if (this.lastHealthPingMessageId) {
+        this.telegramService.deleteMessageSafe(
+          this.notifierChatId,
+          this.lastHealthPingMessageId,
+        );
+      }
+      const message = await this.telegramService.sendMessageSafe(
         this.notifierChatId,
         'Telegram bot is running',
       );
+      if (!message) return;
+      this.lastHealthPingMessageId = message.message_id;
     }, HEALTH_PING_INTERVAL);
   };
 
