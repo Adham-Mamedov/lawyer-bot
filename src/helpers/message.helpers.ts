@@ -31,11 +31,18 @@ export const openAIMessageToTelegramMessages = (message: ThreadMessage) => {
         );
       });
 
+      textWithCitations = escapeMarkupUrlWithHtml(textWithCitations);
+
       return splitMessages(textWithCitations, MAX_TG_MESSAGE_LENGTH).filter(
         (text) => text !== '.',
       );
     })
     .filter(Boolean);
+};
+
+const escapeMarkupUrlWithHtml = (text: string) => {
+  const regex = /\[([^\]]+)\] ?\((https:\/\/lex\.uz\/[^\s]+)\)/gm;
+  return text.replace(regex, `<a href="$2">$1</a>`);
 };
 
 const splitByAnnotations = (text: string, maxLength: number): string[] => {
