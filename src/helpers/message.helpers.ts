@@ -5,10 +5,14 @@ import { ThreadMessage, ThreadMessagesPage } from '../types/openAI.types';
 export const openAIMessagesPageToTelegramMessages = (
   messages: ThreadMessagesPage,
 ) => {
-  return messages.data.flatMap((message) => {
-    if (message.role !== 'assistant') return [];
-    return openAIMessageToTelegramMessages(message);
-  });
+  return messages.data
+    .toSorted((a, b) => {
+      return a.created_at - b.created_at;
+    })
+    .flatMap((message) => {
+      if (message.role !== 'assistant') return [];
+      return openAIMessageToTelegramMessages(message);
+    });
 };
 
 export const openAIMessageToTelegramMessages = (message: ThreadMessage) => {

@@ -182,9 +182,6 @@ export class OpenAIService implements IOpenAIService {
       },
     );
 
-    //TODO: remove log
-    console.dir(run.usage, { depth: 3 });
-
     const replyMessages = openAIMessagesPageToTelegramMessages(messages);
 
     return callback(replyMessages);
