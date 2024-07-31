@@ -5,7 +5,5 @@
 /src/*.js
 !*.example
 
-# Elastic Beanstalk Files
-.elasticbeanstalk/*
-!.elasticbeanstalk/*.cfg.yml
-!.elasticbeanstalk/*.global.yml
+# Datasets
+/src/datasets/*
